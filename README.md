@@ -1,13 +1,8 @@
 # YouTube embed image overlay
 
+- Using docker.
+
 A tool to add more visual cue when embedding YouTube videos in GitHub.
-
-## Run app localy
-
-- Make sure to have [nix package manager](https://nixos.org/download.html) installed.
-- Clone repo & cd into it.
-- Run: `nix-shell`
-- Inside the shell run `gunicorn -w 4 -b 0.0.0.0:8080 wsgi:app` and visit http://localhost:8080/
 
 ## Example
 
@@ -38,64 +33,29 @@ Here's how it'd look:
 [![](https://yt-embed.live/embed?v=3BYNj6Yvl8I)](http://www.youtube.com/watch?v=3BYNj6Yvl8I "Video Title")
 ```
 
-## Deployment & Hosting
+## Development
 
-### systemd service
-
-```
-# cat /lib/systemd/system/yt-embed.service
-[Unit]
-Description=yt-embed
-
-[Service]
-Type=simple
-Restart=always
-RestartSec=5s
-WorkingDirectory=/home/ubuntu/yt-embed
-ExecStart=/home/ubuntu/.nix-profile/bin/nix-shell -I /home/ubuntu/.nix-defexpr/channels --run "gunicorn -w 4 -b 0.0.0.0:9070 wsgi:app"
-
-[Install]
-WantedBy=multi-user.target
+```sh
+docker compose -f docker-compose.dev.yml up --build
 ```
 
-### nginx config
+## Deployment
 
+```sh
+sudo docker run -d --restart=always --name yt-embed -p 8849:8000 zjffun/yt-embed
 ```
-$ cat /etc/nginx/sites-enabled/yt-embed
+
+NGINX 配置:
+
+```bash
+sudo cat <<'EOF' > /etc/nginx/sites-enabled/yt-embed-zjffun-com
 server {
-    server_name yt-embed.live www.yt-embed.live;
-
-    location / { 
-        proxy_pass http://localhost:9070;
-    }
-
-
-    listen 443 ssl; # managed by Certbot
-    ssl_certificate /etc/letsencrypt/live/yt-embed.live/fullchain.pem; # managed by Certbot
-    ssl_certificate_key /etc/letsencrypt/live/yt-embed.live/privkey.pem; # managed by Certbot
-    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
-    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
-
-
-}
-
-server {
-    if ($host = www.yt-embed.live) {
-        return 301 https://$host$request_uri;
-    } # managed by Certbot
-
-
-    if ($host = yt-embed.live) {
-        return 301 https://$host$request_uri;
-    } # managed by Certbot
-
-
-    server_name yt-embed.live www.yt-embed.live;
+    server_name yt-embed.zjffun.com;
     listen 80;
-    return 404; # managed by Certbot
 
-
-
-
+    location / {
+        proxy_pass http://localhost:8849;
+    }
 }
+EOF
 ```
